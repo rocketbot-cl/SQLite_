@@ -1,47 +1,64 @@
-import sqlite3
-global conn
-global database
 import os
+import sys
+global cursor
+global conn
+global hostname
+global username
+global password
+global database
+
+base_path = tmp_global_obj["basepath"]
+cur_path = base_path + 'modules' + os.sep + 'PostgreSQL' + os.sep + 'libs' + os.sep
+sys.path.append(cur_path)
+print(cur_path)
+
+import psycopg2
 
 module = GetParams('module')
 
 if module == "connect":
+    hostname = GetParams('hostname')
+    username = GetParams('username')
+    password = GetParams('password')
     database = GetParams('database')
     var_ = GetParams('var_')
+    print(hostname,username,password,database)
 
-    conn = None
+    status = False
 
     try:
-        if os.path.isfile(database):
-            conn = sqlite3.connect(database)
-            status = True
-        else:
-            status = False
-            raise Exception ('Database doesn\'t exist')
-    except Exception as e:
+        conn = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
+        cursor = conn.cursor()
+        status = True
+    except:
         PrintException()
-        raise e
+
 
     SetVar(var_,status)
 
+
 if module == "execute":
-    query = GetParams('query')
+    query_ = GetParams('query_')
     result = []
     var_ = GetParams('var_')
 
+    try:
+        conn = psycopg2.connect(host=hostname, user=username, password=password, dbname=database)
+        cursor = conn.cursor()
+    except:
+        PrintException()
 
     try:
-        conn = sqlite3.connect(database)
-        cur = conn.cursor()
-        cur.execute(query)
+        query = query_
+        cursor.execute(query)
 
         if "select" in query.lower():
 
 
-            col = [d[0] for d in cur.description]
+            col = [d[0] for d in cursor.description]
             print('COL', col)
 
-            rows = cur.fetchall()
+            rows = cursor.fetchall()
 
             for row in rows:
                 # print(row)
@@ -60,5 +77,6 @@ if module == "execute":
         # print(result)
         conn.close()
         SetVar(var_, result)
-    except:
+    except Exception as e:
         PrintException()
+        raise e
